@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -19,9 +21,11 @@ type application struct {
 func main() {
 	var cfg config
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
 
-	cfg.port = 4000
+	flag.Parse()
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	app := &application{
 		config: cfg,
@@ -32,4 +36,13 @@ func main() {
 		logger.Error("error starting server", "error", err)
 		os.Exit(1)
 	}
+}
+
+func getEnvAsInt(key string, fallback int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return fallback
 }
