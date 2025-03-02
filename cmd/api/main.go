@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"sync"
 )
 
 type config struct {
@@ -12,6 +13,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	wg     sync.WaitGroup
 }
 
 func main() {
