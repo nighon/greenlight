@@ -1,10 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 )
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Good day")
+	data := envelope{
+		"msg": "Good day",
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, data, nil); err != nil {
+	}
 }
