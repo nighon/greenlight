@@ -50,12 +50,13 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return nil
 }
 
-func (m MovieModel) GetAll() ([]*Movie, error) {
+func (m MovieModel) GetAll(ctx context.Context, title string) ([]*Movie, error) {
 	query := fmt.Sprintf(`
 		SELECT id, created_at, title, year
-		FROM movies`)
+		FROM movies
+		WHERE title like "%%%s%%"`, title)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	rows, err := m.DB.QueryContext(ctx, query)

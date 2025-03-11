@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"example.com/internal/data"
 )
@@ -37,7 +38,23 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
-	movies, err := app.models.Movies.GetAll()
+	var input struct {
+		Title string
+		// data.Filters
+	}
+
+	qs := r.URL.Query()
+
+	input.Title = app.readString(qs, "title", "")
+
+	go func() {
+		<-r.Context().Done()
+		fmt.Println("request canceled")
+	}()
+
+	time.Sleep(10 * time.Second)
+
+	movies, err := app.models.Movies.GetAll(r.Context(), input.Title)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
