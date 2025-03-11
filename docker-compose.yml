@@ -1,24 +1,51 @@
 version: '3.8'
 
 services:
-  db:
-    image: mysql:8
+  app:
+    build: .
     environment:
-      MYSQL_DATABASE: 'greenlight'
-      MYSQL_USER: 'dev'
-      MYSQL_PASSWORD: 'dev'
-      MYSQL_ROOT_PASSWORD: 'root'
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: dev
+      MYSQL_PASSWORD: dev
+      MYSQL_DATABASE: greenlight
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
-      - "3316:3306"
+      - "4000:4000"
+    depends_on:
+      - mysql
+      - redis
+
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: dev
+      MYSQL_PASSWORD: dev
+      MYSQL_DATABASE: greenlight
     volumes:
       - mysql_data:/var/lib/mysql
+    # Internal accessible only
+    # ports:
+    #   - "3306:3306"
+
+  redis:
+    image: redis:latest
+    restart: always
+    volumes:
+      - redis_data:/data
+    # Internal accessible only
+    # ports:
+    #   - "6379:6379"
 
   phpmyadmin:
     image: phpmyadmin
     environment:
       # PMA_ARBITRARY: 1
       # PMA_HOST: mysql
-      PMA_HOSTS: db
+      PMA_HOSTS: mysql
       UPLOAD_LIMIT: 30M
     restart: always
     ports:
@@ -26,3 +53,4 @@ services:
 
 volumes:
   mysql_data:
+  redis_data:

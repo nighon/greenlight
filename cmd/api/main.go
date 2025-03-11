@@ -32,7 +32,7 @@ func main() {
 	var cfg config
 
 	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", "dev:dev@tcp(127.0.0.1:3316)/greenlight?parseTime=true"), "MySQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", "dev:dev@tcp(mysql:3306)/greenlight?parseTime=true"), "MySQL DSN")
 
 	flag.Parse()
 
