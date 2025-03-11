@@ -1,0 +1,35 @@
+# Ignore Go build artifacts
+# /myapp
+*.exe
+*.out
+*.o
+*.a
+
+# Ignore dependency directories
+/vendor/
+bin/
+pkg/
+
+# Ignore Go test binaries
+*.test
+*.prof
+
+# Ignore Git repository files
+.git
+.gitignore
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore Docker-related files
+docker-compose.yml
+
+# Ignore environment/configuration files (optional)
+.env
+config.yaml
+
+# Misc
+.DS_Store
