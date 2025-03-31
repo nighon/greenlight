@@ -19,6 +19,11 @@ type config struct {
 	db   struct {
 		dsn string
 	}
+	limiter struct {
+		rps     float64
+		burst   int
+		enabled bool
+	}
 }
 
 type application struct {
@@ -32,7 +37,10 @@ func main() {
 	var cfg config
 
 	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", "dev:dev@tcp(mysql:3306)/greenlight?parseTime=true"), "MySQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", "dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"), "MySQL DSN")
+	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", getEnvAsFloat64("LIMITER_RPS", 2), "Rate limit to apply to requests per second")
+	flag.IntVar(&cfg.limiter.burst, "limiter-burst", getEnvAsInt("LIMITER_BURST", 4), "Burst limit to apply to requests")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", getEnvAsBool("LIMITER_ENABLED", true), "Enable rate limiting")
 
 	flag.Parse()
 
@@ -86,6 +94,24 @@ func getEnvAsInt(key string, fallback int) int {
 	if value, exists := os.LookupEnv(key); exists {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		}
+	}
+	return fallback
+}
+
+func getEnvAsFloat64(key string, fallback float64) float64 {
+	if value, exists := os.LookupEnv(key); exists {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
+		}
+	}
+	return fallback
+}
+
+func getEnvAsBool(key string, fallback bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return fallback
