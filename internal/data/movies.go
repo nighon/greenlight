@@ -3,7 +3,10 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+
+	// "fmt"
 	"time"
 )
 
@@ -50,7 +53,33 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return nil
 }
 
-func (m MovieModel) GetAll(ctx context.Context, title string) ([]*Movie, error) {
+func (m MovieModel) Get(id int64) (*Movie, error) {
+	query := `SELECT id, created_at, title, year FROM movies WHERE id = ?`
+
+	var movie Movie
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrRecordNotFound
+		} else {
+			return nil, err
+		}
+	}
+
+	return &movie, nil
+}
+
+func (m MovieModel) GetAll(ctx context.Context, title string, filters Filters) ([]*Movie, Metadata, error) {
 	query := fmt.Sprintf(`
 		SELECT id, created_at, title, year
 		FROM movies
@@ -59,13 +88,16 @@ func (m MovieModel) GetAll(ctx context.Context, title string) ([]*Movie, error) 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
+	// args := []interface{}{title}
+
+	// rows, err := m.DB.QueryContext(ctx, query, args...)
 	rows, err := m.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 	defer rows.Close()
 
-	// totalRecords := 0
+	totalRecords := 0
 	movies := []*Movie{}
 
 	for rows.Next() {
@@ -77,16 +109,19 @@ func (m MovieModel) GetAll(ctx context.Context, title string) ([]*Movie, error) 
 			&movie.Title,
 			&movie.Year,
 		)
+
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 
 		movies = append(movies, &movie)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 
-	return movies, nil
+	Metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return movies, Metadata, nil
 }

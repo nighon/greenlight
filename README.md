@@ -32,5 +32,7 @@ $ migrate -path=./migrations -database="mysql://dev:dev@tcp(127.0.0.1:3306)/gree
 ```console
 curl -i http://localhost:4000/v1/healthcheck
 curl -i http://localhost:4000/v1/movies
-curl -i -X POST -d '{"title": "Terminator 2", "year": "1986"}' -- http://localhost:4000/v1/movies
+curl -i http://localhost:4000/v1/movies/1
+curl -i -X POST -d '{"title": "Terminator", "year": "1986"}' -- http://localhost:4000/v1/movies
+curl -i -X POST -d '{"title": "Terminator 2", "year": "1991"}' -- http://localhost:4000/v1/movies
 ```
