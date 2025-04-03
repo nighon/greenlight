@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -16,9 +18,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var (
-	version = vcs.Version()
-)
+var version = vcs.Version()
 
 type config struct {
 	port int
@@ -67,6 +67,19 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+
+	logger.Info("database connection pool established")
+
+	expvar.NewString("version").Set(version)
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 
 	app := &application{
 		config: cfg,
