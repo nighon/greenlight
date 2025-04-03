@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,9 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	cors struct {
+		trustedOrigins []string
+	}
 }
 
 type application struct {
@@ -55,6 +59,11 @@ func main() {
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", getEnvAsFloat64("LIMITER_RPS", 2), "Rate limit to apply to requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", getEnvAsInt("LIMITER_BURST", 4), "Burst limit to apply to requests")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", getEnvAsBool("LIMITER_ENABLED", true), "Enable rate limiting")
+
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(s string) error {
+		cfg.cors.trustedOrigins = strings.Fields(s)
+		return nil
+	})
 
 	displayVersion := flag.Bool("version", false, "Display version and exit")
 
@@ -94,7 +103,7 @@ func main() {
 	}
 
 	if err := app.serve(); err != nil {
-		logger.Error("error starting server", "error", err)
+		logger.Error("error running server", "error", err)
 		os.Exit(1)
 	}
 }

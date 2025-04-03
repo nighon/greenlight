@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
-	// "fmt"
 	"time"
 )
 
@@ -40,11 +38,6 @@ func (m MovieModel) Insert(movie *Movie) error {
 		return err
 	}
 
-	cancel()
-
-	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	query = `SELECT id, created_at, title, year FROM movies WHERE id = ?`
 	if err := m.DB.QueryRowContext(ctx, query, id).Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year); err != nil {
 		return err
@@ -60,14 +53,13 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-
+	
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
 		&movie.Title,
 		&movie.Year,
 	)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrRecordNotFound
@@ -85,10 +77,10 @@ func (m MovieModel) GetAll(ctx context.Context, title string, filters Filters) (
 		FROM movies
 		WHERE title like "%%%s%%"`, title)
 
+	// args := []interface{}{title}
+
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-
-	// args := []interface{}{title}
 
 	// rows, err := m.DB.QueryContext(ctx, query, args...)
 	rows, err := m.DB.QueryContext(ctx, query)
@@ -109,7 +101,6 @@ func (m MovieModel) GetAll(ctx context.Context, title string, filters Filters) (
 			&movie.Title,
 			&movie.Year,
 		)
-
 		if err != nil {
 			return nil, Metadata{}, err
 		}
