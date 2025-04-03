@@ -4,7 +4,7 @@
 
 ```console
 $ open -a Docker        # 开启 Docker 服务
-$ docker compose up -d  # 在 Docker 中运行 MySQL 数据库
+$ docker compose up -d  # 在 Docker 中运行 MySQL 数据库 # docker compose up -d --pull=never
 
 $ source .envrc-example # 导入环境变量，设置参数
 $ go run ./cmd/api      # 启动 Web 服务

@@ -32,15 +32,13 @@ services:
       - mysql
 
   app:
-    # build: .
     restart: "always"
-    # env_file:
-    #   - .env
-    # environment:
-    #   DATABASE_URL: "dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"
-      # - DATABASE_URL="${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/${MYSQL_DATABASE}"
-    # ports:
-    #   - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "${PORT}:${PORT}"
     depends_on:
       - mysql
       # - redis
