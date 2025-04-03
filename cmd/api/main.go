@@ -23,7 +23,10 @@ var version = vcs.Version()
 type config struct {
 	port int
 	db   struct {
-		dsn string
+		dsn          string
+		maxOpenConns int
+		maxIdleConns int
+		maxIdleTime  time.Duration
 	}
 	limiter struct {
 		rps     float64
@@ -46,6 +49,9 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", ""), "MySQL DSN")
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", getEnvAsInt("DB_MAX_OPEN_CONNS", 25), "Maximum number of open connections to the database")
+	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", getEnvAsInt("DB_MAX_IDLE_CONNS", 25), "Maximum number of idle connections to the database")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", getEnvAsDuration("DB_MAX_IDLE_TIME", 15*time.Minute), "Maximum idle time for a connection to the database")
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", getEnvAsFloat64("LIMITER_RPS", 2), "Rate limit to apply to requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", getEnvAsInt("LIMITER_BURST", 4), "Burst limit to apply to requests")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", getEnvAsBool("LIMITER_ENABLED", true), "Enable rate limiting")
@@ -99,6 +105,10 @@ func openDB(cfg config) (*sql.DB, error) {
 		return nil, err
 	}
 
+	db.SetMaxOpenConns(cfg.db.maxOpenConns)
+	db.SetMaxIdleConns(cfg.db.maxIdleConns)
+	db.SetConnMaxIdleTime(cfg.db.maxIdleTime)
+
 	// Create context with 5s timeout. If we can't connect in 5s, we cancel the context and return an error.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -140,6 +150,15 @@ func getEnvAsBool(key string, fallback bool) bool {
 	if value, exists := os.LookupEnv(key); exists {
 		if boolValue, err := strconv.ParseBool(value); err == nil {
 			return boolValue
+		}
+	}
+	return fallback
+}
+
+func getEnvAsDuration(key string, fallback time.Duration) time.Duration {
+	if value, exists := os.LookupEnv(key); exists {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
 		}
 	}
 	return fallback
