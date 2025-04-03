@@ -6,7 +6,11 @@ import (
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	data := envelope{
-		"msg": "Good day",
+		"status": "available",
+		"system_info": map[string]string{
+			"environment": app.config.env,
+			"version":     version,
+		},
 	}
 
 	if err := app.writeJSON(w, http.StatusOK, data, nil); err != nil {

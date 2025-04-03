@@ -23,6 +23,7 @@ var version = vcs.Version()
 
 type config struct {
 	port int
+	env  string
 	db   struct {
 		dsn          string
 		maxOpenConns int
@@ -52,6 +53,7 @@ func main() {
 	version = getEnvAsString("VERSION", version)
 
 	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
+	flag.StringVar(&cfg.env, "env", getEnvAsString("ENV", "development"), "Application environment (development|staging|production)")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", ""), "MySQL DSN")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", getEnvAsInt("DB_MAX_OPEN_CONNS", 25), "Maximum number of open connections to the database")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", getEnvAsInt("DB_MAX_IDLE_CONNS", 25), "Maximum number of idle connections to the database")
