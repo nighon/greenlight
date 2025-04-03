@@ -5,10 +5,10 @@ services:
     env_file:
       - .env
     environment:
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD?Variable not set}
-      - MYSQL_USER=${MYSQL_USER?Variable not set}
-      - MYSQL_DATABASE=${MYSQL_DATABASE?Variable not set}
-      - MYSQL_ROOT_PASSWORD=root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD?Variable not set}
+      MYSQL_USER: ${MYSQL_USER?Variable not set}
+      MYSQL_DATABASE: ${MYSQL_DATABASE?Variable not set}
+      MYSQL_ROOT_PASSWORD: root
     volumes:
       - mysql-data:/var/lib/mysql
 
@@ -32,18 +32,19 @@ services:
       - mysql
 
   app:
-    build: .
+    # build: .
     restart: "always"
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL: "${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/${MYSQL_DATABASE}?parseTime=true"
-    ports:
-      - "${PORT}:${PORT}"
+    # env_file:
+    #   - .env
+    # environment:
+    #   DATABASE_URL: "dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"
+      # - DATABASE_URL="${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/${MYSQL_DATABASE}"
+    # ports:
+    #   - "${PORT}:${PORT}"
     depends_on:
       - mysql
-      - redis
+      # - redis
 
 volumes:
   mysql-data:
-  redis-data:
+  # redis-data:

@@ -11,3 +11,13 @@ services:
   #     - redis-data:/data
   #   ports:
   #     - "6379:6379"
+
+  app:
+    build:
+      context: .
+    restart: "no"
+    environment:
+      DATABASE_URL: "${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE}?parseTime=true"
+      # - DATABASE_URL="dev:dev@tcp(mysql:3306)/greenlight?parseTime=true"
+    ports:
+      - "4000:4000"
