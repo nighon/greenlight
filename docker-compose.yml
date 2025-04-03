@@ -1,53 +1,48 @@
 services:
-  # app:
-  #   build: .
-  #   environment:
-  #     MYSQL_HOST: mysql
-  #     MYSQL_PORT: 3306
-  #     MYSQL_USER: dev
-  #     MYSQL_PASSWORD: dev
-  #     MYSQL-DATABASE: greenlight
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: 6379
-  #   ports:
-  #     - "4000:4000"
-  #   depends_on:
-  #     - mysql
-  #     - redis
-
   mysql:
     image: mysql:8
     restart: always
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: dev
-      MYSQL_PASSWORD: dev
-      MYSQL_DATABASE: greenlight
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD?Variable not set}
+      - MYSQL_USER=${MYSQL_USER?Variable not set}
+      - MYSQL_DATABASE=${MYSQL_DATABASE?Variable not set}
+      - MYSQL_ROOT_PASSWORD=root
     volumes:
       - mysql-data:/var/lib/mysql
-    # Internal accessible only
-    ports:
-      - "3306:3306"
 
-  redis:
-    image: redis:latest
-    restart: always
-    volumes:
-      - redis-data:/data
-    # Internal accessible only
-    ports:
-      - "6379:6379"
+  # redis:
+  #   image: redis:latest
+  #   restart: always
+  #   volumes:
+  #     - redis-data:/data
 
   phpmyadmin:
     image: phpmyadmin
+    restart: always
     environment:
       # PMA_ARBITRARY: 1
       # PMA_HOST: mysql
       PMA_HOSTS: mysql
       UPLOAD_LIMIT: 30M
-    restart: always
     ports:
       - 3300:80
+    depends_on:
+      - mysql
+
+  app:
+    build: .
+    restart: "always"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL: "${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/${MYSQL_DATABASE}?parseTime=true"
+    ports:
+      - "${PORT}:${PORT}"
+    depends_on:
+      - mysql
+      - redis
 
 volumes:
   mysql-data:
