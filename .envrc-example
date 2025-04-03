@@ -1,0 +1,8 @@
+export PORT=3000
+export DATABASE_URL="dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"
+export SMTP_HOST=""
+export SMTP_PORT=587
+export SMTP_USERNAME=
+export SMTP_PASSWORD=
+export SMTP_SENDER=""
+export VERSION=0.1.0

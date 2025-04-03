@@ -3,14 +3,14 @@
 ## 开启服务
 
 ```console
-# 开启 Docker 服务
-$ open -a Docker
+$ open -a Docker        # 开启 Docker 服务
+$ docker compose up -d  # 在 Docker 中运行 MySQL 数据库
 
-# 在 Docker 中运行 MySQL 数据库
-$ docker compose up -d
+$ source .envrc-example # 导入环境变量，设置参数
+$ go run ./cmd/api      # 启动 Web 服务
 
-# 启动 Web 服务
-$ go run ./cmd/api -port=3000 -env=production
+$ go run ./cmd/api -port=3000 -env=production   # 或者从命令行设置参数，启动 Web 服务。
+                                                # 优先级：命令行 > 环境变量 > 默认值
 ```
 
 ## 数据库迁移

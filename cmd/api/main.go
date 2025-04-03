@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -11,7 +12,12 @@ import (
 	"time"
 
 	"example.com/internal/data"
+	"example.com/internal/vcs"
 	_ "github.com/go-sql-driver/mysql"
+)
+
+var (
+	version = vcs.Version()
 )
 
 type config struct {
@@ -36,13 +42,22 @@ type application struct {
 func main() {
 	var cfg config
 
+	version = getEnvAsString("VERSION", version)
+
 	flag.IntVar(&cfg.port, "port", getEnvAsInt("PORT", 4000), "Server port to listen on")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", "dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"), "MySQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", getEnvAsString("DATABASE_URL", ""), "MySQL DSN")
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", getEnvAsFloat64("LIMITER_RPS", 2), "Rate limit to apply to requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", getEnvAsInt("LIMITER_BURST", 4), "Burst limit to apply to requests")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", getEnvAsBool("LIMITER_ENABLED", true), "Enable rate limiting")
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	if *displayVersion {
+		fmt.Printf("Version: \t%s\n", version)
+		os.Exit(0)
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
