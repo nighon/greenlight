@@ -19,7 +19,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var version = vcs.Version()
+var (
+	version = vcs.Version()
+)
 
 type config struct {
 	port int
