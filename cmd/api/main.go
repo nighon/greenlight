@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/nighon/greenlight/internal/data"
+	"github.com/nighon/greenlight/internal/mailer"
 	"github.com/nighon/greenlight/internal/vcs"
 )
 
@@ -48,7 +49,7 @@ type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
-	// mailer mailer.Mailer
+	mailer mailer.Mailer
 	wg sync.WaitGroup
 }
 
