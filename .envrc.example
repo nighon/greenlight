@@ -1,8 +1,6 @@
-export PORT=3000
-export DATABASE_URL="dev:dev@tcp(127.0.0.1:3306)/greenlight?parseTime=true"
-export SMTP_HOST=""
+export DATABASE_URL=
+export SMTP_HOST="sandbox.smtp.mailtrap.io"
 export SMTP_PORT=587
 export SMTP_USERNAME=
 export SMTP_PASSWORD=
-export SMTP_SENDER=""
-export VERSION=0.1.0
+export SMTP_SENDER="Christian Bager Bach Houmann <no-reply@github.com/nighon/greenlight>"

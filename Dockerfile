@@ -1,31 +1,23 @@
-# Stage 1: Build the Go application
-FROM golang:1.24-alpine AS builder
+# Use the official Golang image as the base image
+FROM golang:1.23
 
+# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum files first to leverage Docker cache
+# Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download dependencies
+# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
 
-# Copy source code
+# Copy the source from the current directory to the Working Directory inside the container
 COPY . .
 
-# Build the Go application with optimizations
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o main ./cmd/api
+# Build the Go app
+RUN go build -o /app/bin/api ./cmd/api
 
-# Stage 2: Use a minimal and secure runtime image
-# FROM gcr.io/distroless/base
-FROM gcr.io/distroless/static:nonroot
+# Expose port 8080 to the outside world
+EXPOSE 8080
 
-WORKDIR /app
-
-# Copy only the built binary from the builder stage
-COPY --from=builder /app/main .
-
-# Run the application with a non-root user (security best practice)
-USER nonroot:nonroot
-
-# Start the application
-CMD ["./main"]
+# Command to run the executable
+CMD ["/app/bin/api", "-db-dsn=${DATABASE_URL}"]

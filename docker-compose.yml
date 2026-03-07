@@ -1,48 +1,27 @@
+version: '3.8'
+
 services:
-  mysql:
-    image: mysql:8
-    restart: always
-    env_file:
-      - .env
+  db:
+    image: postgres:latest
     environment:
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD?Variable not set}
-      MYSQL_USER: ${MYSQL_USER?Variable not set}
-      MYSQL_DATABASE: ${MYSQL_DATABASE?Variable not set}
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-greenlight}
+    ports:
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
 
-  # redis:
-  #   image: redis:latest
-  #   restart: always
-  #   volumes:
-  #     - redis-data:/data
-
-  phpmyadmin:
-    image: phpmyadmin
-    restart: always
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
-      # PMA_ARBITRARY: 1
-      # PMA_HOST: mysql
-      PMA_HOSTS: mysql
-      UPLOAD_LIMIT: 30M
-    ports:
-      - 3300:80
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:password@db:5432/greenlight?sslmode=disable}
     depends_on:
-      - mysql
-
-  app:
-    restart: "always"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
+      - db
     ports:
-      - "${PORT}:${PORT}"
-    depends_on:
-      - mysql
-      # - redis
+      - "8080:8080"
 
 volumes:
-  mysql-data:
-  # redis-data:
+  postgres_data:

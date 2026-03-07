@@ -4,28 +4,40 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
-	"example.com/internal/data"
-	"example.com/internal/validator"
+	"github.com/nighon/greenlight/internal/data"
+	"github.com/nighon/greenlight/internal/validator"
 )
 
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title string `json:"title"`
-		Year  int32  `json:"year"`
+		Title   string       `json:"title"`
+		Year    int32        `json:"year"`
+		Runtime data.Runtime `json:"runtime"`
+		Genres  []string     `json:"genres"`
 	}
 
 	if err := app.readJSON(w, r, &input); err != nil {
-		app.serverErrorResponse(w, r, err)
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	movie := &data.Movie{
-		Title: input.Title,
-		Year:  input.Year,
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
 	}
 
-	if err := app.models.Movies.Insert(r.Context(), movie); err != nil {
+	v := validator.New()
+
+	if data.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	if err := app.models.Movies.Insert(movie); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -45,7 +57,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	movie, err := app.models.Movies.Get(r.Context(), id)
+	movie, err := app.models.Movies.Get(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -68,7 +80,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	movie, err := app.models.Movies.Get(r.Context(), id)
+	movie, err := app.models.Movies.Get(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -78,6 +90,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		}
 		return
 	}
+
 	// If the client provided an "X-Expected-Version" header, check that the version
 	// matches the version of the record being updated. If not, return a 409 Conflict
 	// status code.
@@ -108,21 +121,21 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	if input.Year != nil {
 		movie.Year = *input.Year
 	}
-	// if input.Runtime != nil {
-	// 	movie.Runtime = *input.Runtime
-	// }
-	// if input.Genres != nil {
-	// 	movie.Genres = input.Genres
-	// }
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+	if input.Genres != nil {
+		movie.Genres = input.Genres
+	}
 
 	v := validator.New()
 
-	// if data.ValidateMovie(v, movie); !v.Valid() {
-	// 	app.failedValidationResponse(w, r, v.Errors)
-	// 	return
-	// }
+	if data.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
 
-	err = app.models.Movies.Update(ctx, movie)
+	err = app.models.Movies.Update(movie)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrEditConflict):
@@ -138,9 +151,33 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	err = app.models.Movies.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil); err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title string
+		Title  string
+		Genres []string
 		data.Filters
 	}
 
@@ -148,18 +185,22 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	qs := r.URL.Query()
 
 	input.Title = app.readString(qs, "title", "")
+	input.Genres = app.readCSV(qs, "genres", []string{})
 
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
 
-	// go func() {
-	// 	<-r.Context().Done()
-	// 	fmt.Println("request canceled")
-	// }()
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{
+		"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime",
+	}
 
-	// time.Sleep(10 * time.Second)
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
 
-	movies, metadata, err := app.models.Movies.GetAll(r.Context(), input.Title, input.Filters)
+	movies, metadata, err := app.models.Movies.GetAll(input.Title, input.Genres, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

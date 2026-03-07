@@ -1,24 +1,37 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"expvar"
 	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/nighon/greenlight/internal/data"
+	"github.com/nighon/greenlight/internal/validator"
 	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 )
 
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This is a deferred function. It will always be run in the event of a panic as Go
+		// unwinds the stack.
 		defer func() {
+			// Use the builtin recover function to check if there was a panic
 			if err := recover(); err != nil {
+				// Set the "Connection" header to "close" to make sure the client
+				// does not expect anything else after the response has been written.
+				// And will make Go's HTTP server automatically close the connection after
+				// the response has been sent.
 				w.Header().Set("Connection", "close")
+				// Call the serverErrorResponse helper method to handle the error.
+				// This will log the error and return a 500 Internal Server Error
+				// response to the client.
 				app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
 			}
 		}()
@@ -32,7 +45,6 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 		limiter  *rate.Limiter
 		lastSeen time.Time
 	}
-
 	var (
 		// Maps are not thread-safe. We need to lock the mutex before reading from the map.
 		mu      sync.Mutex
@@ -79,13 +91,107 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 			app.rateLimitExceededResponse(w, r)
 			return
 		}
-
 		// We aren't using defer here because we want to unlock the mutex as soon as possible.
 		// If we deferred the unlock, it only would be executed after all the downstream handlers have returned.
 		mu.Unlock()
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This header indicates that the response may vary based on the value of the Authorization header in the request.
+		w.Header().Add("Vary", "Authorization")
+
+		authorizationHeader := r.Header.Get("Authorization")
+		if authorizationHeader == "" {
+			app.contextSetUser(r, data.AnonymousUser)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// We expect the value in the Authorization header to be in the format of "Bearer <token>".
+		headerParts := strings.Split(authorizationHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		token := headerParts[1]
+
+		// Validate token
+		v := validator.New()
+		if data.ValidateTokenPlaintext(v, token); !v.Valid() {
+			app.invalidAuthenticationTokenResponse(w, r)
+			return
+		}
+
+		// Get user associated with authentication token
+		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, token)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				app.invalidAuthenticationTokenResponse(w, r)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+
+		r = app.contextSetUser(r, user)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// accepts and returns a HandlerFunc so we can wrap handler functions directly
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if !user.Activated {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
+	return app.requireAuthenticatedUser(fn)
+}
+
+func (app *application) requirePermission(code string, next http.HandlerFunc) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		permissions, err := app.models.Permissions.GetAllForUser(user.ID)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+
+		if !permissions.Include(code) {
+			app.nonPermittedResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	return app.requireActivatedUser(fn)
 }
 
 func (app *application) enableCORS(next http.Handler) http.Handler {
@@ -97,9 +203,15 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		if origin != "" && slices.Contains(app.config.cors.trustedOrigins, origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 
+			// If the request is a preflight OPTIONS request, we need to set the
+			// Access-Control-Allow-Methods and Access-Control-Allow-Headers headers.
 			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 				w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+				// Since we're allowing Authorization, Allow-Origin should be checked against a
+				// list of trusted origins. Never use `*` in this case.
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+
+				// Write headers along with 200 OK status and return from the middleware with no further action
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -144,9 +256,9 @@ func (mrw *metricsResponseWriter) Unwrap() http.ResponseWriter {
 func (app *application) metrics(next http.Handler) http.Handler {
 	var (
 		totalRequestsReceived           = expvar.NewInt("total_requests_received")
-		totalResponseSent               = expvar.NewInt("total_response_sent")
+		totalResponsesSent              = expvar.NewInt("total_responses_sent")
 		totalProcessingTimeMicroseconds = expvar.NewInt("total_processing_time_μs")
-		totalResponseSentByStatus       = expvar.NewMap("total_responses_sent_by_status")
+		totalResponsesSentByStatus      = expvar.NewMap("total_responses_sent_by_status")
 	)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -158,8 +270,8 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 		next.ServeHTTP(mrw, r)
 
-		totalResponseSent.Add(1)
-		totalResponseSentByStatus.Add(strconv.Itoa(mrw.statusCode), 1)
+		totalResponsesSent.Add(1)
+		totalResponsesSentByStatus.Add(strconv.Itoa(mrw.statusCode), 1)
 
 		duration := time.Since(start).Microseconds()
 		totalProcessingTimeMicroseconds.Add(duration)
