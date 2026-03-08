@@ -1,0 +1,10 @@
+export PORT=8080
+export DATABASE_URL=postgresql://postgres:password@127.0.0.1:5432/greenlight?sslmode=disable
+export POSTGRES_USER=
+export POSTGRES_PASSWORD=
+export POSTGRES_DB=
+export SMTP_HOST=
+export SMTP_PORT=587
+export SMTP_USERNAME=
+export SMTP_PASSWORD=
+export SMTP_SENDER=
