@@ -10,13 +10,22 @@ import (
 	"github.com/nighon/greenlight/internal/validator"
 )
 
+type createMovieRequest struct {
+	Title   string       `json:"title"`
+	Year    int32        `json:"year"`
+	Runtime data.Runtime `json:"runtime"`
+	Genres  []string     `json:"genres"`
+}
+
+type updateMovieRequest struct {
+	Title   *string       `json:"title"`
+	Year    *int32        `json:"year"`
+	Runtime *data.Runtime `json:"runtime"`
+	Genres  []string      `json:"genres"`
+}
+
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title   string       `json:"title"`
-		Year    int32        `json:"year"`
-		Runtime data.Runtime `json:"runtime"`
-		Genres  []string     `json:"genres"`
-	}
+	var input createMovieRequest
 
 	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)
@@ -103,12 +112,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	// Pointers' zero-value is nil, so turning these into pointers lets us do partial updates
 	// (whereas e.g. the string zero-value is "" - you wouldn't know if it was or wasn't supplied!)
-	var input struct {
-		Title   *string       `json:"title"`
-		Year    *int32        `json:"year"`
-		Runtime *data.Runtime `json:"runtime"`
-		Genres  []string      `json:"genres"`
-	}
+	var input updateMovieRequest
 
 	if err := app.readJSON(w, r, &input); err != nil {
 		app.badRequestResponse(w, r, err)

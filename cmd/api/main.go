@@ -87,6 +87,13 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
+	dsn, exists := os.LookupEnv("DATABASE_URL")
+	if !exists {
+		fmt.Println("DATABASE_URL not exists")
+	}
+	fmt.Printf("%s\n", dsn)
+	fmt.Printf("== %s\n", cfg.db.dsn)
+
 	db, err := openDB(cfg)
 	if err != nil {
 		logger.Error("error openning db", "error", err)

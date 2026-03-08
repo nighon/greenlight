@@ -2,34 +2,41 @@
 
 ## 开启服务
 
-```console
-$ open -a Docker        # 开启 Docker 服务
-$ docker compose up -d  # 在 Docker 中运行 MySQL 数据库 # docker compose up -d --pull=never
+先开启 Docker 服务
 
-$ source .envrc-example # 导入环境变量，设置参数
-$ go run ./cmd/api      # 启动 Web 服务
+```zsh
+$ open -a Docker
+```
 
-$ go run ./cmd/api -port=3000 -env=production   # 或者从命令行设置参数，启动 Web 服务。
-                                                # 优先级：命令行 > 环境变量 > 默认值
+在 Docker 中运行 Postgres 数据库 `# docker compose up -d --pull=never`
+
+```zsh
+$ source .envrc
+$ docker compose up -d
+$ go run ./cmd/api
+
+# 或者从命令行设置参数，启动 Web 服务。
+# 优先级：命令行 > 环境变量 > 默认值
+$ go run ./cmd/api -port=3000 -env=production
 ```
 
 ## 数据库迁移
 
 安装迁移工具
 
-```console
+```zsh
 $ brew install golang-migrate
 ```
 
 运行迁移脚本
 
-```console
-$ migrate -path=./migrations -database="mysql://dev:dev@tcp(127.0.0.1:3306)/greenlight" up
+```zsh
+$ migrate -path=./migrations -database="postgres://postgres:password@127.0.0.1:3306/greenlight" up
 ```
 
 ## 测试
 
-```console
+```zsh
 curl -i http://localhost:4000/v1/healthcheck
 curl -i http://localhost:4000/v1/movies
 curl -i http://localhost:4000/v1/movies/1
