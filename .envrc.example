@@ -1,0 +1,6 @@
+export DATABASE_URL=
+export SMTP_HOST="localhost"
+export SMTP_PORT=1025
+export SMTP_USERNAME=
+export SMTP_PASSWORD=
+export SMTP_SENDER="Example Team <noreply@example.com>"
